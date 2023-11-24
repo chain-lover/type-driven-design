@@ -5,11 +5,26 @@ const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 struct Progress<I> {
     iter: I,
     i: usize,
+    bound: Option<usize>,
+}
+
+impl<I> Progress<I>
+where
+    I: ExactSizeIterator,
+{
+    pub fn with_bound(mut self) -> Self {
+        self.bound = Some(self.iter.len());
+        self
+    }
 }
 
 impl<I> Progress<I> {
     pub fn new(iter: I) -> Self {
-        Self { iter, i: 0 }
+        Self {
+            iter,
+            i: 0,
+            bound: None,
+        }
     }
 }
 
@@ -20,7 +35,11 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        println!("{}{}", CLEAR, "*".repeat(self.i));
+        print!("{}", CLEAR);
+        match self.bound {
+            Some(bound) => println!("[{}{}]", "*".repeat(self.i), " ".repeat(bound - self.i)),
+            None => println!("{}", "*".repeat(self.i)),
+        }
         self.i += 1;
         self.iter.next()
     }
@@ -30,7 +49,10 @@ trait ProgressTraitExt: Sized {
     fn progress(self) -> Progress<Self>;
 }
 
-impl<Iter> ProgressTraitExt for Iter where Iter: Iterator {
+impl<Iter> ProgressTraitExt for Iter
+where
+    Iter: Iterator,
+{
     fn progress(self) -> Progress<Self> {
         Progress::new(self)
     }
@@ -43,11 +65,7 @@ fn expensive_calculation(_n: &i32) {
 fn main() {
     let v = vec![1, 2, 3];
 
-    for n in Progress::new(v.iter()) {
-        expensive_calculation(n);
-    }
-
-    for n in v.iter().progress() {
+    for n in v.iter().progress().with_bound() {
         expensive_calculation(n);
     }
 }
