@@ -1,13 +1,28 @@
-use std::{thread::sleep, time::Duration, collections::HashSet};
+use std::{thread::sleep, time::Duration};
 
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-fn progress<T, I>(iter: I, f: fn(T)) where I: Iterator<Item = T> {
-    let mut i = 1;
-    for n in iter {
-        println!("{}{}", CLEAR, "*".repeat(i));
-        i += 1;
-        f(n);
+struct Progress<I> {
+    iter: I,
+    i: usize,
+}
+
+impl<I> Progress<I> {
+    pub fn new(iter: I) -> Self {
+        Self { iter, i: 0 }
+    }
+}
+
+impl<I> Iterator for Progress<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        println!("{}{}", CLEAR, "*".repeat(self.i));
+        self.i += 1;
+        self.iter.next()
     }
 }
 
@@ -17,9 +32,8 @@ fn expensive_calculation(_n: &i32) {
 
 fn main() {
     let v = vec![1, 2, 3];
-    progress(v.iter(), expensive_calculation);
 
-    let mut h = HashSet::new();
-    h.insert(0);
-    progress(v.iter(), expensive_calculation);
+    for n in Progress::new(v.iter()) {
+        expensive_calculation(n);
+    }
 }
